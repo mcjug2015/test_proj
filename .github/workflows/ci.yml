@@ -157,7 +157,7 @@ jobs:
             # Share the computed catalog and branch slug with later steps (deploy).
             echo "CAT_NAME=${cat_name}" >> "$GITHUB_ENV"
             echo "BRANCH_SLUG=${branch_cat}" >> "$GITHUB_ENV"
-            pants run src/crutch_migrations/run_crutch_migrations.py:lib -- --cat="${cat_name}" --schema=testing_testing
+            pants run src/crutch_migrations/run_crutch_migrations.py:lib -- run --cat="${cat_name}" --schema=testing_testing
             echo "done running pants run src/crutch_migrations/run_crutch_migrations.py!!!!"
 
       - name: Deploy manipulator_job (Databricks bundle)
