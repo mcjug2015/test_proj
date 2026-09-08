@@ -6,19 +6,8 @@ same gates CI enforces before it is considered done.
 ## What this project is
 
 A PySpark / Delta Lake harness that ingests and profiles data, plus SQL "crutch"
-migrations and a Databricks Asset Bundle (DAB) deployment. Python **3.12.3**, built and
-tested with **Pants 2.30.0**. Runs both locally (open-source Spark + Delta) and on
-Databricks (`databricks-connect`).
-
-Layout:
-- `src/` — library code (resolve `python-default`).
-  - `src/spark_utils.py` — `get_spark()` / `is_dbr()`: the single entry point for a Spark session.
-  - `src/custom_logging.py` — logging config; use it, don't `print`.
-  - `src/cms_pipeline/` — the manipulator job + unwrapper.
-  - `src/crutch_migrations/` — SQL migration runner and `migrations/` files.
-- `test/` — tests (resolve `py-reqs-dev`).
-- `dab/` — Databricks Asset Bundle (`databricks.yml`, `resources/`).
-- `.github/workflows/ci.yml` — the source of truth for the quality gates below.
+migrations and a Databricks Asset Bundle (DAB) deployment. Runs both locally
+(open-source Spark + Delta) and on Databricks (`databricks-connect`).
 
 
 ## Laws of unit testing
@@ -37,6 +26,7 @@ Layout:
 - Whenever feasible src/ should not be changed in order enable testing.
 - Avoid negative assertions, esp `assert_not_called..`. It's hard to keep them up to date as them become irrelevant.
 - Don't test raises(exceptions) that are never mentioned in the unit under test. If they would happen in the code below and pass through to the code above, they are not a concern for the test.
+- Strive to cover all src with tests when possible to do so while obeying the rules above.
 
 
 ## Laws of integration testing
@@ -49,7 +39,17 @@ Layout:
   in parallel with them or with each other's invocation — see the quality gates below.
 
 
-## The quality gates — run these before calling anything done
+## The quality gates — ask before running them
+
+**Always ask before running `pants fmt`, `pants lint`, `pants check`, or `pants test`.**
+These are slow (a full unit run plus integration is minutes of wall clock, and Spark
+fixtures dominate it), so they are the user's call, not an automatic reflex after every
+edit. Make the change, say what you would run to verify it, and wait for a yes. If the
+user has already said to run them — in this session or in the request itself — go ahead
+without asking again. Same for a scoped run the user asked for.
+
+When you have not run them, say plainly that the change is unverified rather than
+implying it passed.
 
 Always go through Pants, never bare `python`/`pytest` (Delta needs the JVM classpath
 Pants assembles; bare `pytest` fails with Delta classpath errors).
@@ -79,7 +79,7 @@ Non-negotiable gates (from `ci.yml`):
    coverage; integration tests run afterward, as a separate `pants test` invocation, never
    in parallel with the unit run — see `ci.yml`'s "Run unit tests" / "Run integration tests"
    steps.
-3. Branch coverage over `src/` stays **≥ 85%** (`fail_under = 85` under `[coverage-py]` in
+3. Branch coverage over `src/` stays **≥ 94%** (`fail_under = 94` under `[coverage-py]` in
    `pants.toml`). It belongs there, not in `pyproject.toml`: coverage.py's own `fail_under`
    is applied to each test partition separately, so a single test file gets failed for not
    covering the rest of `src/` on its own.
@@ -91,8 +91,8 @@ If you can't run these, say so explicitly rather than claiming the change is ver
 
 ## Style — match the tooling, not your preferences
 
-- **Line length is 120** (`black`, `.flake8`, isort all agree). Let `black` and `isort`
-  do the formatting; never hand-format to fight them.
+- **Line length is 120.** Let `black` and `isort` do the formatting; never hand-format
+  to fight them.
 - Imports: sorted by `isort` with the `black` profile. Prefer top-of-file imports;
   defer an import into a function only to gate an optional/env-specific dependency
   (see the Databricks-only imports inside `get_spark`/`is_dbr`).
@@ -147,8 +147,6 @@ If you can't run these, say so explicitly rather than claiming the change is ver
 
 ## Before you finish a change
 
-1. `pants fmt lint check src/ test/` — clean.
-2. `pants test --test-force --use-coverage test/:: -test/integration::` — green, coverage ≥ 85%.
-3. `pants test --test-force test/integration::` — green, run only after step 2 passes.
-4. New/changed behaviour has tests; migrations are idempotent (run-twice safe).
-5. Nothing hardcodes environment-specific paths, credentials, warehouse ids, or catalogs.
+Make sure new/changed behaviour has tests, and that nothing hardcodes environment-specific
+paths, credentials, warehouse ids, or catalogs. Then offer to run the quality gates, in
+order — don't run them unasked.
