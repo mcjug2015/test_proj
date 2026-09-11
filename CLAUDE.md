@@ -55,8 +55,10 @@ Always go through Pants, never bare `python`/`pytest` (Delta needs the JVM class
 Pants assembles; bare `pytest` fails with Delta classpath errors).
 
 ```bash
-# Format + lint + typecheck (black, isort, flake8, mypy) — must be clean
-pants fmt lint check src/ test/
+# Format + lint + typecheck (black, isort, flake8, mypy) — must be clean.
+# Use the recursive `::` form: a bare `src/` selects only targets directly in src/,
+# silently skipping src/cms_pipeline/, src/crutch_migrations/ and every test subdir.
+pants fmt lint check src/:: test/::
 
 # Run unit tests with coverage (everything under test/ except test/integration)
 pants test --test-force --use-coverage test/:: -test/integration::
@@ -74,7 +76,7 @@ pants package src/
 ```
 
 Non-negotiable gates (from `ci.yml`):
-1. `pants lint check src/ test/` is clean — this is `black`, `isort`, `flake8`, `mypy`.
+1. `pants lint check src/:: test/::` is clean — this is `black`, `isort`, `flake8`, `mypy`.
 2. All tests pass. Unit tests (`test/::` minus `test/integration::`) run first, with
    coverage; integration tests run afterward, as a separate `pants test` invocation, never
    in parallel with the unit run — see `ci.yml`'s "Run unit tests" / "Run integration tests"

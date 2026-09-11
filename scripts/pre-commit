@@ -23,7 +23,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 echo "==> [verify] Validating autoformat and types"
-pants lint check src/ test/
+pants lint check src/:: test/::
 
 # Share a running spark-connect-test container across both test runs below, same as
 # validate.sh does, instead of each falling back to its own local embedded Spark.

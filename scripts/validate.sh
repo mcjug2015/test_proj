@@ -15,7 +15,7 @@ for arg in "$@"; do
 done
 
 pants generate-lockfiles
-pants lint check src/ test/
+pants lint check src/:: test/::
 
 mkdir -p "$HOME/.cache/pytest-tmp"
 export PYTEST_TMP_BASE="$HOME/.cache/pytest-tmp"

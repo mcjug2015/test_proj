@@ -44,7 +44,9 @@ jobs:
         run: pants generate-lockfiles
 
       - name: Validate autoformat and types
-        run: pants lint check src/ test/
+        # `::` recurses; a bare `src/` would lint only targets directly in src/.
+        # Quoted because the ": " inside "src/:: test" would otherwise parse as a YAML key.
+        run: "pants lint check src/:: test/::"
 
       - name: Verify Docker access for Spark Connect test containers
         shell: bash
