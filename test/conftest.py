@@ -6,14 +6,15 @@ import string
 import tempfile
 
 import pytest  # type: ignore
-
-from src import custom_logging
-from src.crutch_migrations.run_crutch_migrations import (
+from spark_sql_migrations import custom_logging
+from spark_sql_migrations.spark_sql.spark_sql import (
     get_ascending_letters_within_minute,
     get_output_folder,
     run_migrations,
 )
-from src.spark_utils import get_spark
+from spark_sql_migrations.spark_utils import get_spark
+
+from src.crutch_migrations.run_crutch_migrations import get_migrations_dir
 
 logger = custom_logging.setup_logging().getLogger(__name__)
 
@@ -66,10 +67,18 @@ def _migrate_schema(spark, schema):
     )
     # lets run migrations twice to catch some of the idempotency problems that might exists
     run_migrations(
-        spark, cat="spark_catalog", schema=schema, output_folder=output_folder
+        spark,
+        cat="spark_catalog",
+        schema=schema,
+        output_folder=output_folder,
+        migrations_root=get_migrations_dir(),
     )
     run_migrations(
-        spark, cat="spark_catalog", schema=schema, output_folder=output_folder
+        spark,
+        cat="spark_catalog",
+        schema=schema,
+        output_folder=output_folder,
+        migrations_root=get_migrations_dir(),
     )
 
 

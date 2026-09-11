@@ -1,4 +1,5 @@
-from src import custom_logging
+from spark_sql_migrations import custom_logging
+
 from src.cms_pipeline import manipulator
 
 logger = custom_logging.setup_logging().getLogger(__name__)

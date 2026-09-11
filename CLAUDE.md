@@ -17,7 +17,7 @@ migrations and a Databricks Asset Bundle (DAB) deployment. Runs both locally
 - Do not create abstract class implementations that only serve tests, use `__abstractmethods__=set()` instead.
 - Always mock/patch other methods from our source that are invoked from the unit under test.
 - Whenever mocking/patching is done, assert_called must verify that the expected call took place, or did not if that is what should have happenned.
-- Use `test_spark` or `migrated_test_spark` whenever spark is is invoked in the unit under test.
+- Use `test_spark` or `migrated_spark` whenever spark is is invoked in the unit under test.
 - File, zip and worksheet operations in the unit under test should be tested with trivial dummy files instead of being mocked.
 - The line and branch coverage of one test may not be fully overlapped by the coverage of another test. Keep the test that covers more, delete the other one.
 - Every test must add unique line or branch coverage that isn't supplied by any other test.
@@ -100,14 +100,14 @@ If you can't run these, say so explicitly rather than claiming the change is ver
   narrow `# type: ignore` (e.g. `delta`, `pyspark.dbutils`) — keep it on the specific
   import line, not blanket-ignored, and add `# noqa: F401` only when the import exists
   purely as a capability probe.
-- **Logging, not prints.** Configure via `src/custom_logging.py`; get a module logger and
-  log at appropriate levels.
+- **Logging, not prints.** Configure via `spark_sql_migrations.custom_logging`; get a module logger
+  and log at appropriate levels.
 - Keep functions small and single-purpose; prefer pure helpers that are unit-testable
   without a Spark session where possible.
 
 ## Spark / Delta conventions
 
-- **Get a session only through `get_spark()`** (`src/spark_utils.py`). It transparently
+- **Get a session only through `get_spark()`** (`spark_sql_migrations.spark_utils`). It transparently
   returns a `DatabricksSession` on DBR and a Delta-configured local `SparkSession`
   otherwise. Don't build `SparkSession.builder` ad hoc elsewhere.
 - Local storage locations come from `SPARK_WAREHOUSE_DIR` / `SPARK_METASTORE_DIR` env
@@ -118,14 +118,26 @@ If you can't run these, say so explicitly rather than claiming the change is ver
 
 ## SQL migrations (`src/crutch_migrations/`)
 
-- Migration files are named `YYYYMMDD_N_<scope>.sql`, where `<scope>` is one of:
-  - `all` — runs everywhere (local + Databricks),
-  - `dbr_only` — Databricks-only
-  Pick the scope deliberately; SQL that only one engine supports must not be `all`.
-- **Migrations must be idempotent.** The test harness runs them **twice** on purpose to
-  catch non-idempotent DDL/DML (`migrated_test_spark` in `conftest.py`). Databricks does
-  **not** support `IF NOT EXISTS` on `ALTER TABLE ... ADD COLUMN` — guard idempotent
-  column adds with an `information_schema.columns` check instead.
+The migration **engine** lives in the `spark_sql_migrations` library, not here. This directory holds
+only what this project owns: the `all_spark_migrations/` and `dbr_only_migrations/`
+chains, plus `run_crutch_migrations.py`, a thin wrapper that tells spark_sql_migrations where they
+are. The initial bootstrap chain and the new-migration template ship inside the spark_sql_migrations
+wheel — don't recreate them here.
+
+- Migration files are named `YYYYMMDD_N_<slug>_<revision_id>.sql`, and the chain each one
+  belongs to is its directory:
+  - `all_spark_migrations/` — runs everywhere (local + Databricks),
+  - `dbr_only_migrations/` — Databricks-only
+  Pick the chain deliberately; SQL that only one engine supports must not be in
+  `all_spark_migrations/`. Each file carries `revision_id` / `prev_revision_id` headers
+  forming a single chain; `pants run src/crutch_migrations/run_crutch_migrations.py:lib --
+  create_new_migration --message="..."` writes a correctly-headed one.
+- **Migrations must be idempotent.** The test harness runs them **twice** on purpose
+  (`migrated_spark` in `conftest.py`). Note that the version table gates the second pass,
+  so that double-run proves the *initial* chain is idempotent but not these ones — a
+  replay only happens if the version row is cleared. Databricks does **not** support
+  `IF NOT EXISTS` on `ALTER TABLE ... ADD COLUMN` — guard idempotent column adds with a
+  SQLSTATE 42710 exit handler (see `260831_03_batch_id_for_metrics_table_*.sql`).
 
 ## Pants / BUILD discipline
 
@@ -135,12 +147,19 @@ If you can't run these, say so explicitly rather than claiming the change is ver
 - Two resolves exist: `python-default` (src) and `py-reqs-dev` (test). Add runtime deps to
   `src/requirements.txt`, test-only deps to `test/requirements-dev.txt`, then regenerate:
   `pants generate-lockfiles`. Don't edit lockfiles by hand.
+- `spark_sql_migrations` declares **no** Spark of its own, so the extra is what pulls one in:
+  `spark_sql_migrations[databricks]` in `src/requirements.txt`, `spark_sql_migrations[local]` in
+  `test/requirements-dev.txt`. databricks-connect ships its own top-level `pyspark/` and
+  `delta/`, so the two flavours can never be installed together. The explicit
+  `databricks-connect` / `pyspark` / `delta-spark` pins stay alongside them so this repo,
+  not the extra's version range, decides which Spark is used — the Spark Connect test
+  image is pinned to a matching version.
 - Console entry points and the wheel are defined in `src/BUILD` (`python_distribution`).
 
 ## Testing standards
 
 - Tests live under `test/`, mirroring the `src/` package path, with a `BUILD` per dir.
-- Use the shared fixtures in `test/conftest.py` (`test_spark`, `migrated_test_spark`)
+- Use the shared fixtures in `test/conftest.py` (`test_spark`, `migrated_spark`)
   rather than spinning up Spark yourself.
 - A change to `src/` without a corresponding test is incomplete — coverage is gated and
   CI also enforces a minimum test count.

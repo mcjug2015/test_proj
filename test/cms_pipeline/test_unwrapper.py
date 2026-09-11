@@ -2,8 +2,8 @@ import os
 from unittest import mock
 
 import pytest  # type: ignore
+from spark_sql_migrations import custom_logging
 
-from src import custom_logging
 from src.cms_pipeline.unwrapper import Unwrapper
 
 logger = custom_logging.setup_logging().getLogger(__name__)
