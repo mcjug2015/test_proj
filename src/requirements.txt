@@ -1,5 +1,9 @@
 # testing 123
-Jinja2==3.1.6
+# [databricks] is what pulls a Spark distribution in: spark_sql_migrations itself declares
+# none, so that the two mutually-exclusive flavours can't both be installed.
+# databricks-connect stays pinned here so this project, not the extra's range,
+# decides the version.
+spark_sql_migrations[databricks]==0.0.1
 databricks-connect==18.0.5
 boto3==1.40.0
 openpyxl==3.1.5

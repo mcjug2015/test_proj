@@ -2,8 +2,8 @@ import os
 from unittest import mock
 
 from openpyxl.reader.excel import load_workbook
+from spark_sql_migrations import custom_logging
 
-from src import custom_logging
 from src.cms_pipeline.loader import (
     get_decimal_places,
     get_display_value,

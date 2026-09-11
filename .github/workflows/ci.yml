@@ -8,6 +8,8 @@ jobs:
     env:
       # Fan local process execution out across 12 cores on this 16-core runner.
       PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: "12"
+      DATABRICKS_CLIENT_ID: 4fbddd7d-9f0c-4ae6-a90e-6f15434815a1
+      DATABRICKS_HOST: https://dbc-807557d7-311c.cloud.databricks.com
     steps:
       - name: Configure Pants caches
         shell: bash
@@ -140,9 +142,7 @@ jobs:
 
       - name: Apply ddl
         env:
-          DATABRICKS_CLIENT_ID: 4fbddd7d-9f0c-4ae6-a90e-6f15434815a1
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-          DATABRICKS_HOST: https://dbc-807557d7-311c.cloud.databricks.com
           DATABRICKS_SERVERLESS_COMPUTE_ID: auto
         run: |
             # Per-branch slug (e.g. "main"); shared with the cleanup workflow so
@@ -163,9 +163,6 @@ jobs:
       - name: Deploy manipulator_job (Databricks bundle)
         working-directory: dab
         env:
-          # OAuth machine-to-machine (service principal). The application id is
-          # the client id and is not secret; the secret must be a repo secret.
-          DATABRICKS_CLIENT_ID: 4fbddd7d-9f0c-4ae6-a90e-6f15434815a1
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
             # Reuse the catalog computed in Apply ddl (via $GITHUB_ENV). main uses

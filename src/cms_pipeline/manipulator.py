@@ -13,12 +13,9 @@ from uuid import uuid4
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import LongType
-
-from src import custom_logging
-from src.crutch_migrations.run_crutch_migrations import (
-    get_ascending_letters_within_minute,
-)
-from src.spark_utils import get_spark
+from spark_sql_migrations import custom_logging
+from spark_sql_migrations.spark_sql.spark_sql import get_ascending_letters_within_minute
+from spark_sql_migrations.spark_utils import get_spark
 
 logger = custom_logging.setup_logging().getLogger(__name__)
 
